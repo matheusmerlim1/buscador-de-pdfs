@@ -1,114 +1,985 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Buscador de PDFs</title>
-  <style>
-    :root {
-      color-scheme: light dark;
-      --bg: #f7f7f8;
-      --card: #ffffff;
-      --text: #1a1a1a;
-      --muted: #5a5a5a;
-      --accent: #1c3d6e;
-      --accent-fg: #ffffff;
-      --border: #e2e2e2;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #16171a;
-        --card: #1f2023;
-        --text: #eaeaea;
-        --muted: #a3a3a3;
-        --accent: #5b8def;
-        --accent-fg: #0b1220;
-        --border: #313236;
-      }
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-      line-height: 1.55;
-    }
-    main {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 48px 20px 80px;
-    }
-    h1 { font-size: 1.9rem; margin-bottom: 4px; }
-    .tagline { color: var(--muted); margin-top: 0; margin-bottom: 32px; }
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 28px;
-      margin-bottom: 24px;
-    }
-    .download-btn {
-      display: inline-block;
-      background: var(--accent);
-      color: var(--accent-fg);
-      text-decoration: none;
-      font-weight: 600;
-      padding: 12px 22px;
-      border-radius: 8px;
-      font-size: 1.05rem;
-    }
-    .download-btn:hover { opacity: 0.9; }
-    .meta { color: var(--muted); font-size: 0.9rem; margin-top: 10px; }
-    ul { padding-left: 1.2em; }
-    li { margin-bottom: 6px; }
-    code {
-      background: var(--border);
-      padding: 1px 6px;
-      border-radius: 4px;
-      font-size: 0.92em;
-    }
-    footer { color: var(--muted); font-size: 0.85rem; margin-top: 40px; }
-    footer a { color: inherit; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Buscador de PDFs</title>
+<meta name="description" content="Programa para Windows que le uma pasta inteira de PDFs e diz em qual arquivo e em qual pagina uma palavra aparece. Le tambem PDFs escaneados, por OCR." />
+<meta property="og:title" content="Buscador de PDFs" />
+<meta property="og:description" content="Aponte para uma pasta. Ele diz em qual arquivo e em qual pagina a palavra aparece." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://matheusmerlim1.github.io/buscador-de-pdfs/" />
+<meta property="og:image" content="https://matheusmerlim1.github.io/buscador-de-pdfs/docs/img/03-busca.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2316181d'/%3E%3Crect x='8' y='13' width='16' height='5' rx='1' fill='%23d8f24e'/%3E%3Ccircle cx='14' cy='15.5' r='5.2' fill='none' stroke='%23f7f8fa' stroke-width='2.2'/%3E%3Cpath d='M17.9 19.4 22 23.5' stroke='%23f7f8fa' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet" />
+<style>
+/* ---------------------------------------------------------------------------
+   Buscador de PDFs - pagina de download
+   Cor: tinta quase-preta carrega o hero e o rodape; o amarelo-fluorescente so
+   aparece onde o programa "acha" alguma coisa (marca-texto sobre documento).
+   A pagina e clara de proposito - as capturas sao de uma janela clara do
+   Windows e um fundo escuro faria elas brilharem.
+--------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+
+  --tinta:      #16181d;
+  --tinta-2:    #22262e;
+  --tinta-3:    #343a45;
+  --papel:      #f7f8fa;
+  --superficie: #ffffff;
+  --linha:      #dde1e7;
+  --linha-forte:#c3cad4;
+  --corpo:      #4e535d;
+  --corpo-esc:  #b9bfc9;   /* corpo sobre tinta */
+  --acento:     #d8f24e;
+  --acento-esc: #b7d217;
+
+  --raio: 14px;
+  --raio-s: 8px;
+  --sombra: 0 1px 2px rgba(16,18,24,.05), 0 12px 32px -12px rgba(16,18,24,.22);
+  --sombra-alta: 0 2px 4px rgba(16,18,24,.06), 0 32px 70px -24px rgba(16,18,24,.45);
+
+  --saida: cubic-bezier(.16, 1, .3, 1);
+
+  --z-fixo: 100;
+
+  --larg: 1140px;
+  --gutter: clamp(18px, 5vw, 40px);
+}
+
+@supports (color: oklch(0.5 0.1 250)) {
+  :root {
+    --tinta:      oklch(0.195 0.012 264);
+    --tinta-2:    oklch(0.275 0.014 264);
+    --tinta-3:    oklch(0.375 0.014 264);
+    --papel:      oklch(0.975 0.003 264);
+    --linha:      oklch(0.905 0.006 264);
+    --linha-forte:oklch(0.825 0.010 264);
+    --corpo:      oklch(0.455 0.013 264);
+    --corpo-esc:  oklch(0.805 0.010 264);
+    --acento:     oklch(0.925 0.185 110);
+    --acento-esc: oklch(0.815 0.175 110);
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--papel);
+  color: var(--corpo);
+  font-family: "Archivo", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: clamp(16px, 0.4vw + 15px, 17.5px);
+  line-height: 1.62;
+  font-synthesis-weight: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  color: var(--tinta);
+  line-height: 1.04;
+  letter-spacing: -0.028em;
+  text-wrap: balance;
+  margin: 0;
+  font-weight: 800;
+  font-stretch: 108%;
+}
+
+p { text-wrap: pretty; margin: 0; }
+
+a { color: inherit; }
+
+img { display: block; max-width: 100%; height: auto; }
+
+:focus-visible {
+  outline: 3px solid var(--acento-esc);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+.env {
+  width: 100%;
+  max-width: var(--larg);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.mono {
+  font-family: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Consolas, monospace;
+  font-size: 0.88em;
+  letter-spacing: -0.01em;
+}
+
+/* ---------------------------------------------------------------- hero --- */
+
+.hero {
+  background: var(--tinta);
+  color: var(--corpo-esc);
+  padding-block: clamp(72px, 11vw, 132px) 0;
+  overflow: hidden;
+}
+
+.hero-marca {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: clamp(38px, 7vw, 68px);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: -0.015em;
+}
+.hero-marca svg { flex: none; }
+
+h1 {
+  color: #fff;
+  font-size: clamp(2.4rem, 6.6vw, 4.6rem);
+  font-weight: 900;
+  font-stretch: 112%;
+  letter-spacing: -0.036em;
+  max-width: 16ch;
+}
+
+/* o marca-texto: estado final e "marcado", a animacao vem do 0% via
+   fill-mode backwards - se a animacao nunca rodar, o texto ja esta legivel */
+.marca {
+  color: var(--tinta);
+  background-image: linear-gradient(var(--acento), var(--acento));
+  background-repeat: no-repeat;
+  background-position: 0 0.12em;
+  background-size: 100% 0.86em;
+  padding-inline: 0.06em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  animation: marcar 0.82s var(--saida) 0.32s backwards;
+}
+@keyframes marcar {
+  from { background-size: 0% 0.86em; color: #fff; }
+}
+
+.hero-sub {
+  margin-top: clamp(20px, 3vw, 30px);
+  font-size: clamp(1.05rem, 1.5vw, 1.26rem);
+  line-height: 1.58;
+  max-width: 56ch;
+  color: var(--corpo-esc);
+}
+
+.hero-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: clamp(30px, 4.5vw, 44px);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 26px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 1.02rem;
+  letter-spacing: -0.015em;
+  text-decoration: none;
+  border: 1.5px solid transparent;
+  transition: transform .22s var(--saida), background-color .22s, border-color .22s, color .22s;
+}
+.btn-1 {
+  background: var(--acento);
+  color: var(--tinta);
+  box-shadow: 0 10px 34px -14px rgba(216, 242, 78, .85);
+}
+.btn-1:hover { transform: translateY(-2px); background: #e4f97a; }
+.btn-2 {
+  color: #fff;
+  border-color: rgba(255,255,255,.28);
+}
+.btn-2:hover { border-color: rgba(255,255,255,.6); background: rgba(255,255,255,.06); }
+
+.hero-meta {
+  margin-top: 20px;
+  font-size: 0.93rem;
+  color: #8d949f;
+}
+.hero-meta b { color: var(--corpo-esc); font-weight: 600; }
+
+/* palco: metade tinta, metade papel - a captura atravessa a emenda */
+.palco {
+  background: linear-gradient(to bottom, var(--tinta) 0 52%, var(--papel) 52% 100%);
+  padding-top: clamp(44px, 7vw, 76px);
+}
+/* moldura das capturas */
+.quadro {
+  background: var(--superficie);
+  border: 1px solid var(--linha-forte);
+  border-radius: var(--raio);
+  padding: 7px;
+  box-shadow: var(--sombra-alta);
+  overflow: hidden;
+}
+.quadro img { border-radius: 7px; width: 100%; }
+
+/* lupa: numa tela estreita a janela do programa fica pequena demais para ler,
+   entao qualquer captura abre ampliada e rolavel */
+.js-lupa .quadro img { cursor: zoom-in; }
+
+.lupa {
+  width: min(96vw, 1042px);   /* 1042 = largura real da captura, sem esticar */
+  max-width: none;
+  max-height: 92vh;
+  padding: 0;
+  border: 0;
+  border-radius: var(--raio);
+  background: var(--superficie);
+  overflow: hidden;
+  flex-direction: column;   /* so vale com o dialogo aberto (display:flex abaixo) */
+}
+.lupa[open] { display: flex; }
+.lupa::backdrop { background: rgba(10, 11, 14, .82); }
+.lupa-rolo { overflow: auto; min-height: 0; -webkit-overflow-scrolling: touch; }
+.lupa-rolo img { width: 1042px; max-width: none; border-radius: 0; }
+/* a barra fica embaixo: em cima ela cairia sobre os controles da janela
+   que aparece na propria captura */
+.lupa-barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 12px 10px 16px;
+  border-top: 1px solid var(--linha);
+  background: var(--papel);
+}
+.lupa-dica { margin: 0; font-size: .86rem; color: var(--corpo); }
+.lupa-fechar {
+  flex: none;
+  padding: 9px 18px;
+  border: 1px solid var(--linha-forte);
+  border-radius: 999px;
+  background: var(--superficie);
+  color: var(--tinta);
+  font: 700 .92rem/1 inherit;
+  letter-spacing: -.01em;
+  cursor: pointer;
+  transition: background-color .2s, border-color .2s;
+}
+.lupa-fechar:hover { background: var(--tinta); border-color: var(--tinta); color: #fff; }
+
+/* -------------------------------------------------------------- secoes --- */
+
+section { padding-block: clamp(72px, 11vw, 124px); }
+
+.titulo-sec {
+  font-size: clamp(1.85rem, 4.2vw, 3rem);
+  max-width: 20ch;
+}
+.intro-sec {
+  margin-top: 18px;
+  max-width: 62ch;
+  font-size: clamp(1rem, 1.2vw, 1.12rem);
+}
+
+/* --------------------------------------------------------------- passos --- */
+/* Aqui a numeracao e informacao: a ordem dos passos importa de verdade. */
+
+.passos-topo { max-width: 720px; }
+
+.passos {
+  margin-top: clamp(38px, 6vw, 60px);
+  display: grid;
+  grid-template-columns: minmax(0, 348px) minmax(0, 1fr);
+  gap: clamp(26px, 3.4vw, 52px);
+  align-items: center;
+}
+
+.abas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.aba {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+  align-items: start;
+  text-align: left;
+  font: inherit;
+  color: var(--corpo);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--raio);
+  padding: 17px 18px 18px;
+  cursor: pointer;
+  position: relative;
+  transition: background-color .25s var(--saida), border-color .25s var(--saida);
+}
+.aba:hover { background: rgba(22,24,29,.035); }
+
+.aba[aria-selected="true"] {
+  background: var(--superficie);
+  border-color: var(--linha);
+  box-shadow: var(--sombra);
+}
+
+.aba-num {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: rgba(22,24,29,.07);
+  color: var(--tinta-3);
+  font-size: 0.92rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  transition: background-color .25s, color .25s;
+}
+.aba[aria-selected="true"] .aba-num { background: var(--tinta); color: var(--acento); }
+
+.aba-tit {
+  display: block;
+  color: var(--tinta);
+  font-weight: 700;
+  font-size: 1.06rem;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+.aba-txt {
+  display: block;
+  margin-top: 7px;
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+/* Com JS, so o passo aberto mostra a explicacao - e isso que faz a coluna
+   caber ao lado da captura. Sem JS os quatro textos ficam visiveis. */
+.js-passos .aba-txt {
+  max-height: 0;
+  margin-top: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height .36s var(--saida), opacity .26s, margin-top .36s var(--saida);
+}
+.js-passos .aba[aria-selected="true"] .aba-txt {
+  max-height: 280px;
+  margin-top: 7px;
+  opacity: 1;
+}
+
+/* barra de progresso do avanco automatico - eco da barra do proprio programa */
+.aba-barra {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 9px;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(22,24,29,.1);
+  opacity: 0;
+  overflow: hidden;
+}
+.aba[aria-selected="true"] .aba-barra { opacity: 1; }
+.aba-barra i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--acento-esc);
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+.passos[data-auto="on"] .aba[aria-selected="true"] .aba-barra i {
+  animation: avancar var(--dwell, 7s) linear forwards;
+}
+@keyframes avancar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+.telas {
+  position: relative;
+  aspect-ratio: 1042 / 572;
+}
+.tela {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .42s var(--saida), visibility .42s;
+}
+.tela[data-ativa] { opacity: 1; visibility: visible; }
+.tela .quadro { height: 100%; }
+
+.legenda {
+  margin-top: clamp(14px, 2vw, 20px);
+  font-size: 0.93rem;
+  color: var(--corpo);
+  min-height: 3.2em;
+}
+.legenda b { color: var(--tinta); font-weight: 700; }
+
+/* sem JS: vira uma lista vertical honesta, cada passo com a sua captura */
+.telas-fallback { display: none; }
+
+/* ------------------------------------------------------------ recursos --- */
+
+.recursos { background: var(--superficie); border-block: 1px solid var(--linha); }
+
+.lista-rec {
+  margin-top: clamp(36px, 5vw, 56px);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+  gap: clamp(28px, 3.6vw, 52px) clamp(30px, 4vw, 64px);
+}
+
+.rec-lider { grid-column: 1 / -1; max-width: 760px; }
+.rec-lider h3 { font-size: clamp(1.35rem, 2.4vw, 1.9rem); }
+.rec-lider p { margin-top: 12px; font-size: clamp(1rem, 1.15vw, 1.1rem); }
+
+.rec h3 {
+  font-size: 1.14rem;
+  letter-spacing: -0.022em;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+.rec h3::before {
+  content: "";
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--acento);
+  transform: translateY(-1px);
+}
+.rec p { margin-top: 9px; font-size: 0.97rem; }
+
+/* --------------------------------------------------------------- notas --- */
+
+.notas { padding-bottom: clamp(84px, 12vw, 140px); }
+
+.lista-notas {
+  margin-top: clamp(32px, 4.5vw, 48px);
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--linha);
+}
+.nota {
+  display: grid;
+  grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+  gap: 6px clamp(24px, 4vw, 56px);
+  padding-block: clamp(20px, 2.6vw, 28px);
+  border-bottom: 1px solid var(--linha);
+}
+.nota dt { color: var(--tinta); font-weight: 700; letter-spacing: -0.02em; }
+.nota dd { margin: 0; font-size: 0.98rem; }
+
+/* -------------------------------------------------------------- fechar --- */
+
+.fechar {
+  background: var(--tinta);
+  color: var(--corpo-esc);
+  padding-block: clamp(72px, 10vw, 116px);
+}
+.fechar h2 { color: #fff; font-size: clamp(1.8rem, 4vw, 2.8rem); }
+.fechar p { margin-top: 16px; max-width: 52ch; }
+.fechar .hero-acoes { margin-top: clamp(28px, 4vw, 40px); }
+
+footer {
+  background: var(--tinta);
+  color: #838a95;
+  font-size: 0.9rem;
+  padding-block: 30px 44px;
+}
+footer .env {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 26px;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255,255,255,.1);
+  padding-top: 26px;
+}
+footer a { color: var(--corpo-esc); text-decoration-color: rgba(255,255,255,.3); text-underline-offset: 3px; }
+footer a:hover { color: #fff; }
+footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+
+/* --------------------------------------------------------- revelacao ---- */
+/* Parte de um estado ja visivel: a classe so e adicionada por JS, e so
+   quando o visitante nao pediu menos movimento. */
+
+.js-revela .revela { opacity: 0; transform: translateY(18px); }
+.js-revela .revela.dentro {
+  opacity: 1;
+  transform: none;
+  transition: opacity .6s var(--saida), transform .6s var(--saida);
+}
+
+/* ------------------------------------------------------------- telas --- */
+
+@media (max-width: 900px) {
+  .passos { grid-template-columns: 1fr; }
+  .abas { order: 2; }
+  .telas-bloco { order: 1; }
+  .nota { grid-template-columns: 1fr; }
+  .legenda { min-height: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  .marca { animation: none; }
+  .tela { transition: none; }
+}
+
+@media print {
+  .hero, .fechar, footer { background: #fff; color: #000; }
+  h1, .fechar h2, .hero-marca { color: #000; }
+  .tela { position: static; opacity: 1; visibility: visible; }
+  .telas { aspect-ratio: auto; }
+}
+</style>
 </head>
 <body>
-  <main>
-    <h1>Buscador de PDFs</h1>
-    <p class="tagline">Indexa uma pasta inteira de PDFs e encontra qualquer palavra ou trecho em segundos.</p>
 
-    <div class="card">
-      <a class="download-btn" href="https://github.com/matheusmerlim1/buscador-de-pdfs/releases/latest/download/BuscadorDePDFs.exe">
-        ⬇ Baixar BuscadorDePDFs.exe
+<header class="hero">
+  <div class="env">
+    <div class="hero-marca">
+      <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="7" fill="#22262e"/>
+        <rect x="8" y="13" width="16" height="5" rx="1" fill="#d8f24e"/>
+        <circle cx="14" cy="15.5" r="5.2" fill="none" stroke="#f7f8fa" stroke-width="2.2"/>
+        <path d="M17.9 19.4 22 23.5" stroke="#f7f8fa" stroke-width="2.4" stroke-linecap="round"/>
+      </svg>
+      Buscador de PDFs
+    </div>
+
+    <h1>Procure uma palavra em <span class="marca">todos os seus PDFs</span> de uma vez.</h1>
+
+    <p class="hero-sub">
+      Aponte para uma pasta. Ele lê cada PDF que houver ali dentro, inclusive os
+      escaneados, e responde em qual arquivo e em qual página o termo aparece.
+      Dois cliques abrem o documento já na página certa.
+    </p>
+
+    <div class="hero-acoes">
+      <a class="btn btn-1" href="https://github.com/matheusmerlim1/buscador-de-pdfs/releases/latest/download/BuscadorDePDFs.exe">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 20h16"/>
+        </svg>
+        Baixar para Windows
       </a>
-      <p class="meta">Windows 64 bits · não precisa instalar Python nem nada além do próprio programa.</p>
+      <a class="btn btn-2" href="https://github.com/matheusmerlim1/buscador-de-pdfs">Ver o código</a>
     </div>
 
-    <div class="card">
-      <h2>O que faz</h2>
-      <ul>
-        <li>Indexa recursivamente todos os PDFs de uma pasta (e subpastas), com cache local para não reprocessar arquivos inalterados.</li>
-        <li>Busca por palavra ou trecho, mostrando em quais arquivos e páginas ela aparece, com um trecho de contexto.</li>
-        <li>Agrupa automaticamente cópias idênticas de um mesmo PDF.</li>
-        <li>Lê PDFs escaneados (só imagem) via OCR, quando o Tesseract está instalado.</li>
-        <li>Abre o PDF direto na página encontrada com um duplo-clique, nos leitores mais comuns.</li>
-      </ul>
+    <p class="hero-meta">
+      <b>Windows 64 bits</b> &middot; arquivo único de 44 MB &middot; não instala nada,
+      não precisa de Python
+    </p>
+  </div>
+</header>
+
+<div class="palco">
+  <div class="env">
+    <figure class="quadro" style="margin:0">
+      <img src="docs/img/03-busca.png" width="1042" height="572"
+           alt="Janela do programa: a busca por &quot;contraventamento&quot; devolveu 10 ocorrências em 3 documentos, cada um aberto nas páginas onde o termo aparece, com um trecho de contexto." />
+    </figure>
+  </div>
+</div>
+
+<section id="passos">
+  <div class="env">
+    <div class="passos-topo revela">
+      <h2 class="titulo-sec">Quatro passos, uma vez só.</h2>
+      <p class="intro-sec">
+        A leitura dos PDFs acontece uma vez por arquivo. Da segunda vez em diante o
+        programa relê apenas o que mudou, e a busca é instantânea.
+      </p>
     </div>
 
-    <div class="card">
-      <h2>Como usar</h2>
-      <ol>
-        <li>Baixe o <code>BuscadorDePDFs.exe</code> e coloque numa pasta qualquer do seu computador.</li>
-        <li>Dê um duplo-clique para abrir. O Windows pode avisar que o executável não tem assinatura reconhecida — clique em "Mais informações" → "Executar assim mesmo".</li>
-        <li>Escolha a pasta com os PDFs. A primeira indexação pode demorar; as próximas são rápidas (só verifica o que mudou).</li>
-        <li>Digite o termo de busca e veja em quais documentos e páginas ele aparece.</li>
+    <div class="passos" id="passo-a-passo" data-auto="off">
+      <ol class="abas" role="tablist" aria-label="Como usar o programa">
+        <li>
+          <button class="aba" type="button" role="tab" id="aba-1" aria-controls="tela-1" aria-selected="true">
+            <span class="aba-num">1</span>
+            <span>
+              <span class="aba-tit">Aponte para a pasta</span>
+              <span class="aba-txt">Cole o caminho no campo <b>Pasta</b> ou use <b>Escolher pasta</b>. Subpastas entram junto. Se a pasta for de rede e só permitir leitura, o índice é gravado ao lado do programa.</span>
+            </span>
+            <span class="aba-barra" aria-hidden="true"><i></i></span>
+          </button>
+        </li>
+        <li>
+          <button class="aba" type="button" role="tab" id="aba-2" aria-controls="tela-2" aria-selected="false" tabindex="-1">
+            <span class="aba-num">2</span>
+            <span>
+              <span class="aba-tit">Clique em Atualizar</span>
+              <span class="aba-txt">Ele varre a pasta, extrai o texto de cada PDF e guarda num índice local. Nada começa sozinho — você decide a hora. Dá para cancelar no meio: o que já foi lido fica salvo.</span>
+            </span>
+            <span class="aba-barra" aria-hidden="true"><i></i></span>
+          </button>
+        </li>
+        <li>
+          <button class="aba" type="button" role="tab" id="aba-3" aria-controls="tela-3" aria-selected="false" tabindex="-1">
+            <span class="aba-num">3</span>
+            <span>
+              <span class="aba-tit">Busque a palavra ou o trecho</span>
+              <span class="aba-txt">Digite e dê Enter. Sai a contagem por documento e, ao expandir, a página exata com um trecho em volta. Acento e maiúscula não atrapalham, e uma frase quebrada em duas linhas no PDF continua sendo encontrada.</span>
+            </span>
+            <span class="aba-barra" aria-hidden="true"><i></i></span>
+          </button>
+        </li>
+        <li>
+          <button class="aba" type="button" role="tab" id="aba-4" aria-controls="tela-4" aria-selected="false" tabindex="-1">
+            <span class="aba-num">4</span>
+            <span>
+              <span class="aba-tit">Abra o PDF já na página</span>
+              <span class="aba-txt">Dois cliques na linha da página e o documento abre rolado até ela. Clique com o botão direito para reanalisar só aquele arquivo.</span>
+            </span>
+            <span class="aba-barra" aria-hidden="true"><i></i></span>
+          </button>
+        </li>
       </ol>
-    </div>
 
-    <footer>
-      Código-fonte no <a href="https://github.com/matheusmerlim1/buscador-de-pdfs">GitHub</a>.
-    </footer>
-  </main>
+      <div class="telas-bloco revela">
+        <div class="telas">
+          <figure class="tela" id="tela-1" role="tabpanel" aria-labelledby="aba-1" data-ativa>
+            <div class="quadro">
+              <img src="docs/img/01-pasta.png" width="1042" height="572" loading="lazy"
+                   alt="Campo Pasta preenchido com o caminho escolhido; a lista de resultados ainda está vazia e a mensagem pede para clicar em Atualizar." />
+            </div>
+          </figure>
+          <figure class="tela" id="tela-2" role="tabpanel" aria-labelledby="aba-2">
+            <div class="quadro">
+              <img src="docs/img/02-indexacao.png" width="1042" height="572" loading="lazy"
+                   alt="Barra de progresso cheia e a mensagem: indexação concluída, 4 PDFs em 0,1 segundo." />
+            </div>
+          </figure>
+          <figure class="tela" id="tela-3" role="tabpanel" aria-labelledby="aba-3">
+            <div class="quadro">
+              <img src="docs/img/03-busca.png" width="1042" height="572" loading="lazy"
+                   alt="Resultado da busca: três documentos, com a contagem de ocorrências e as páginas listadas embaixo de cada um." />
+            </div>
+          </figure>
+          <figure class="tela" id="tela-4" role="tabpanel" aria-labelledby="aba-4">
+            <div class="quadro">
+              <img src="docs/img/04-selecao.png" width="1042" height="572" loading="lazy"
+                   alt="A linha da página 2 aparece selecionada na lista, pronta para o duplo-clique que abre o PDF nela." />
+            </div>
+          </figure>
+        </div>
+        <p class="legenda" id="legenda" aria-live="polite">
+          <b>Passo 1.</b> A pasta está definida e o índice, ainda vazio. A análise não começa sozinha.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="recursos">
+  <div class="env">
+    <div class="lista-rec">
+      <div class="rec rec-lider revela">
+        <h2 class="titulo-sec">O trabalho pesado acontece uma vez.</h2>
+        <p>
+          Ler o texto de milhares de PDFs é lento; procurar dentro de um índice já
+          pronto não é. O programa guarda o que leu num banco SQLite dentro da
+          própria pasta e, na vez seguinte, confere a data de cada arquivo e relê
+          só os que mudaram. Uma pasta com mil documentos demora na primeira
+          passada e responde na hora nas seguintes.
+        </p>
+      </div>
+
+      <div class="rec revela">
+        <h3>Cópias idênticas viram um item só</h3>
+        <p>
+          O mesmo memorial salvo em quatro pastas de obra não vira quatro
+          resultados. O conteúdo de cada arquivo é comparado por hash, e as cópias
+          aparecem agrupadas sob um único documento.
+        </p>
+      </div>
+
+      <div class="rec revela">
+        <h3>PDF escaneado também</h3>
+        <p>
+          Páginas que são só imagem passam por OCR e entram na busca como
+          qualquer outra. Depende do Tesseract instalado na máquina; sem ele, o
+          resto continua funcionando normalmente.
+        </p>
+      </div>
+
+      <div class="rec revela">
+        <h3>Acento e maiúscula não contam</h3>
+        <p>
+          <span class="mono">Página</span>, <span class="mono">pagina</span> e
+          <span class="mono">PÁGINA</span> encontram a mesma coisa. Uma frase
+          quebrada no meio pela diagramação do PDF continua sendo encontrada
+          inteira.
+        </p>
+      </div>
+
+      <div class="rec revela">
+        <h3>Pasta de rede sem permissão de escrita</h3>
+        <p>
+          Se o programa não conseguir gravar o índice na pasta analisada — comum em
+          unidade de rede corporativa —, ele grava ao lado do próprio executável e
+          avisa na barra de status.
+        </p>
+      </div>
+
+      <div class="rec revela">
+        <h3>Abre no leitor que você já usa</h3>
+        <p>
+          Foxit, Adobe Acrobat e Reader, PDF-XChange, SumatraPDF e Edge abrem
+          direto na página encontrada. Em leitores fora dessa lista o PDF abre
+          normalmente, só sem pular a página.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="notas">
+  <div class="env">
+    <h2 class="titulo-sec revela">Antes de baixar</h2>
+    <dl class="lista-notas revela">
+      <div class="nota">
+        <dt>O Windows vai reclamar</dt>
+        <dd>
+          O executável não tem assinatura digital paga, então o SmartScreen mostra
+          um aviso na primeira vez. Clique em <b>Mais informações</b> e depois em
+          <b>Executar assim mesmo</b>. O código-fonte inteiro está no GitHub, se
+          você quiser conferir antes.
+        </dd>
+      </div>
+      <div class="nota">
+        <dt>Onde fica o índice</dt>
+        <dd>
+          Num arquivo <span class="mono">.pdf_search_index.sqlite3</span> dentro da
+          pasta analisada. Pode apagar quando quiser: na próxima análise ele é
+          refeito.
+        </dd>
+      </div>
+      <div class="nota">
+        <dt>OCR é opcional</dt>
+        <dd>
+          Para ler PDFs escaneados é preciso ter o
+          <a href="https://github.com/UB-Mannheim/tesseract/wiki">Tesseract</a>
+          instalado. O programa procura sozinho nos lugares de sempre e avisa na
+          tela se não achar.
+        </dd>
+      </div>
+      <div class="nota">
+        <dt>Nada sai da sua máquina</dt>
+        <dd>
+          Não há servidor, conta nem envio de arquivo. O programa lê os PDFs, grava
+          o índice no seu disco e é só isso.
+        </dd>
+      </div>
+    </dl>
+  </div>
+</section>
+
+<section class="fechar">
+  <div class="env">
+    <h2>Baixe e aponte para uma pasta.</h2>
+    <p>
+      Funciona em qualquer pasta com PDFs: normas, memoriais, manuais, contratos,
+      a papelada toda de uma obra.
+    </p>
+    <div class="hero-acoes">
+      <a class="btn btn-1" href="https://github.com/matheusmerlim1/buscador-de-pdfs/releases/latest/download/BuscadorDePDFs.exe">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 20h16"/>
+        </svg>
+        Baixar BuscadorDePDFs.exe
+      </a>
+      <a class="btn btn-2" href="https://github.com/matheusmerlim1/buscador-de-pdfs/releases">Todas as versões</a>
+    </div>
+  </div>
+</section>
+
+<dialog class="lupa" id="lupa" aria-label="Captura de tela ampliada">
+  <div class="lupa-rolo"><img id="lupa-img" src="" alt="" width="1042" height="572" /></div>
+  <div class="lupa-barra">
+    <p class="lupa-dica">Arraste para o lado para ver a janela inteira.</p>
+    <button class="lupa-fechar" type="button" id="lupa-fechar">Fechar</button>
+  </div>
+</dialog>
+
+<footer>
+  <div class="env">
+    <span>Buscador de PDFs — por Matheus Raposo</span>
+    <nav>
+      <a href="https://github.com/matheusmerlim1/buscador-de-pdfs">Código-fonte</a>
+      <a href="https://github.com/matheusmerlim1/buscador-de-pdfs/releases">Versões</a>
+      <a href="https://github.com/matheusmerlim1/buscador-de-pdfs/issues">Relatar um problema</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var menosMovimento = matchMedia("(prefers-reduced-motion: reduce)");
+
+  /* ---------------------------------------------------------- passos --- */
+  var bloco = document.getElementById("passo-a-passo");
+  var abas = [].slice.call(bloco.querySelectorAll(".aba"));
+  var telas = [].slice.call(bloco.querySelectorAll(".tela"));
+  var legenda = document.getElementById("legenda");
+
+  var LEGENDAS = [
+    "<b>Passo 1.</b> A pasta está definida e o índice, ainda vazio. A análise não começa sozinha.",
+    "<b>Passo 2.</b> Quatro PDFs lidos. A barra de status diz quantos arquivos entraram e quanto tempo levou.",
+    "<b>Passo 3.</b> Dez ocorrências em três documentos. O primeiro traz uma cópia idêntica junto, agrupada.",
+    "<b>Passo 4.</b> Com a página selecionada, um duplo-clique abre o PDF já rolado até ela."
+  ];
+
+  var DWELL = 7000;
+  var atual = 0;
+  var relogio = null;
+  var automatico = false;
+
+  /* so colapsa os passos inativos quando o JS esta de fato no comando */
+  document.documentElement.classList.add("js-passos");
+
+  function mostrar(i) {
+    atual = i;
+    abas.forEach(function (a, n) {
+      var ativa = n === i;
+      a.setAttribute("aria-selected", ativa ? "true" : "false");
+      a.tabIndex = ativa ? 0 : -1;
+    });
+    telas.forEach(function (t, n) {
+      if (n === i) t.setAttribute("data-ativa", "");
+      else t.removeAttribute("data-ativa");
+    });
+    legenda.innerHTML = LEGENDAS[i];
+
+    /* reinicia a animacao da barra de progresso do passo ativo */
+    if (automatico) {
+      var barra = abas[i].querySelector(".aba-barra i");
+      barra.style.animation = "none";
+      void barra.offsetWidth;
+      barra.style.animation = "";
+    }
+  }
+
+  function agendar() {
+    clearTimeout(relogio);
+    if (!automatico) return;
+    relogio = setTimeout(function () {
+      mostrar((atual + 1) % abas.length);
+      agendar();
+    }, DWELL);
+  }
+
+  function parar() {
+    automatico = false;
+    bloco.setAttribute("data-auto", "off");
+    clearTimeout(relogio);
+  }
+
+  abas.forEach(function (aba, i) {
+    aba.addEventListener("click", function () {
+      parar();               /* escolha manual desliga o avanco automatico */
+      mostrar(i);
+    });
+    aba.addEventListener("keydown", function (e) {
+      var d = e.key === "ArrowDown" || e.key === "ArrowRight" ? 1
+            : e.key === "ArrowUp" || e.key === "ArrowLeft" ? -1 : 0;
+      if (!d) return;
+      e.preventDefault();
+      parar();
+      var alvo = (i + d + abas.length) % abas.length;
+      mostrar(alvo);
+      abas[alvo].focus();
+    });
+  });
+
+  bloco.addEventListener("pointerenter", function () { clearTimeout(relogio); });
+  bloco.addEventListener("pointerleave", function () { agendar(); });
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) clearTimeout(relogio); else agendar();
+  });
+
+  /* o avanco automatico so comeca quando os passos aparecem na tela, e nunca
+     para quem pediu menos movimento */
+  if (!menosMovimento.matches && "IntersectionObserver" in window) {
+    var olho = new IntersectionObserver(function (entradas) {
+      entradas.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        olho.disconnect();
+        automatico = true;
+        bloco.setAttribute("data-auto", "on");
+        mostrar(atual);
+        agendar();
+      });
+    }, { threshold: 0.35 });
+    olho.observe(bloco);
+  }
+
+  /* ------------------------------------------------------------ lupa --- */
+  var lupa = document.getElementById("lupa");
+  if (lupa && typeof lupa.showModal === "function") {
+    document.documentElement.classList.add("js-lupa");
+    var lupaImg = document.getElementById("lupa-img");
+    var rolo = lupa.querySelector(".lupa-rolo");
+
+    document.addEventListener("click", function (e) {
+      var img = e.target.closest(".quadro img");
+      if (img) {
+        lupaImg.src = img.currentSrc || img.src;
+        lupaImg.alt = img.alt;
+        lupa.showModal();
+        /* comeca mostrando a esquerda da janela, onde estao os nomes */
+        rolo.scrollLeft = 0;
+        return;
+      }
+      /* clique fora do conteudo (no backdrop) fecha */
+      if (e.target === lupa) lupa.close();
+    });
+
+    document.getElementById("lupa-fechar").addEventListener("click", function () {
+      lupa.close();
+    });
+  }
+
+  /* ------------------------------------------------------- revelacao --- */
+  if (!menosMovimento.matches && "IntersectionObserver" in window) {
+    document.documentElement.classList.add("js-revela");
+    var alvos = [].slice.call(document.querySelectorAll(".revela"));
+    var lente = new IntersectionObserver(function (entradas) {
+      entradas.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        e.target.classList.add("dentro");
+        lente.unobserve(e.target);
+      });
+    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+    alvos.forEach(function (el) { lente.observe(el); });
+
+    /* rede de seguranca: se algo impedir o observer de disparar, o conteudo
+       aparece do mesmo jeito */
+    setTimeout(function () {
+      alvos.forEach(function (el) { el.classList.add("dentro"); });
+    }, 3000);
+  }
+})();
+</script>
+
 <!-- === Botao de volta ao portfolio - cole antes de </body> === -->
 <a id="mr-portfolio-btn" href="https://matheusmerlim1.github.io/" target="_blank" rel="noopener"
    aria-label="Abrir o portf&oacute;lio de Matheus Raposo" title="Ver todos os meus projetos">

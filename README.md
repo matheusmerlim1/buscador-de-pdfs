@@ -5,6 +5,9 @@ e permite buscar uma palavra/trecho, mostrando em quais arquivos e páginas ela
 aparece. Documentos idênticos (mesmo conteúdo) são agrupados como um só. PDFs
 que são só imagem (escaneados) são lidos via OCR (Tesseract), quando disponível.
 
+![Busca por um termo: o programa lista em quais documentos e em quais páginas
+ele aparece, com um trecho de contexto](docs/img/03-busca.png)
+
 ## Download
 
 Baixe o executável pronto (não precisa instalar Python) na
@@ -33,6 +36,7 @@ direto pela [última release](https://github.com/matheusmerlim1/buscador-de-pdfs
 |   `-- pdf_search_app.py
 |-- tests/
 |   `-- test_pdf_search_app.py
+|-- docs/img/                 # capturas de tela usadas no README e na pagina
 |-- conftest.py               # poe src/ no sys.path para os testes
 |-- index.html                # pagina de download (GitHub Pages)
 |-- BuscadorDePDFs.spec       # build PyInstaller (empacota src/pdf_search_app.py)
