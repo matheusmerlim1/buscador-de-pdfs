@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# PyInstaller build/dist output (rebuild from src/ + BuscadorDePDFs.spec)
+build/
+dist/
+*.exe
+
+# Runtime state and data (machine-specific, not source)
+config.json
+indexes/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+
+# Guia local de referencia (nao vai para o GitHub)
+githubGuia.md

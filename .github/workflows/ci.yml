@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Check whitespace and patch integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          # No commit raiz nao existe HEAD^: compara com a arvore vazia.
+          if git rev-parse --verify --quiet HEAD^ >/dev/null; then
+            base=HEAD^
+          else
+            base=$(git hash-object -t tree /dev/null)
+          fi
+          git diff --check "$base" HEAD
+
+      - name: Validate JSON files
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            jq empty "$file"
+          done < <(find . -path './.git' -prune -o -type f -name '*.json' -print0)
+
+      - name: Validate YAML files
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            ruby -e 'require "yaml"; YAML.load_file(ARGV.fetch(0), aliases: true)' "$file"
+          done < <(find . -path './.git' -prune -o -type f \( -name '*.yaml' -o -name '*.yml' \) -print0)
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Install Tk (required to import tkinter headlessly)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends python3-tk
+
+      # requirements-dev.txt pins exact versions -> reproducible install (no separate lockfile).
+      - name: Install dependencies
+        run: python -m pip install --no-cache-dir -r requirements-dev.txt
+
+      - name: Validate compilation
+        run: python -m py_compile src/pdf_search_app.py
+
+      - name: Build (import smoke test)
+        run: python -c "import sys; sys.path.insert(0, 'src'); import pdf_search_app"
+
+      - name: Run tests
+        run: python -m pytest tests -q

@@ -1,0 +1,4 @@
+pymupdf==1.28.2
+sv_ttk==2.6.1
+pytesseract==0.3.13
+pillow==12.3.0
