@@ -97,11 +97,16 @@ a { color: inherit; }
 
 img { display: block; max-width: 100%; height: auto; }
 
+/* foco: tinta sobre o papel (~17:1); o amarelo-esc so dava ~1,6:1 ali.
+   Nas faixas escuras (hero, fechamento, rodape) o anel vira o acento (~15:1). */
 :focus-visible {
-  outline: 3px solid var(--acento-esc);
+  outline: 3px solid var(--tinta);
   outline-offset: 3px;
   border-radius: 3px;
 }
+.hero :focus-visible,
+.fechar :focus-visible,
+footer :focus-visible { outline-color: var(--acento); }
 
 .env {
   width: 100%;
@@ -230,6 +235,9 @@ h1 {
 /* lupa: numa tela estreita a janela do programa fica pequena demais para ler,
    entao qualquer captura abre ampliada e rolavel */
 .js-lupa .quadro img { cursor: zoom-in; }
+/* o .quadro corta o que passa da borda (overflow), entao o anel de foco
+   da captura fica por dentro dela */
+.quadro img:focus-visible { outline-offset: -4px; border-radius: 7px; }
 
 .lupa {
   width: min(96vw, 1042px);   /* 1042 = largura real da captura, sem esticar */
@@ -245,6 +253,7 @@ h1 {
 .lupa[open] { display: flex; }
 .lupa::backdrop { background: rgba(10, 11, 14, .82); }
 .lupa-rolo { overflow: auto; min-height: 0; -webkit-overflow-scrolling: touch; }
+.lupa-rolo:focus-visible { outline-offset: -3px; }   /* o dialogo corta o que passa da borda */
 .lupa-rolo img { width: 1042px; max-width: none; border-radius: 0; }
 /* a barra fica embaixo: em cima ela cairia sobre os controles da janela
    que aparece na propria captura */
@@ -427,6 +436,25 @@ section { padding-block: clamp(72px, 11vw, 124px); }
 }
 .legenda b { color: var(--tinta); font-weight: 700; }
 
+/* pausar/retomar o avanco automatico (WCAG 2.2.2) - so aparece quando o
+   avanco automatico existe, ou seja, com JS e sem pedido de menos movimento */
+.passos-pausa {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 6px 14px;
+  border: 1px solid var(--linha-forte);
+  border-radius: 999px;
+  background: var(--superficie);
+  color: var(--tinta);
+  font: 600 .88rem/1 inherit;
+  cursor: pointer;
+}
+.passos-pausa:hover { border-color: var(--tinta-3); }
+.passos-pausa[hidden] { display: none; }
+
 /* sem JS: vira uma lista vertical honesta, cada passo com a sua captura */
 .telas-fallback { display: none; }
 
@@ -591,6 +619,8 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
   </div>
 </header>
 
+<main id="conteudo">
+
 <div class="palco">
   <div class="env">
     <figure class="quadro" style="margin:0">
@@ -612,7 +642,7 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
 
     <div class="passos" id="passo-a-passo" data-auto="off">
       <ol class="abas" role="tablist" aria-label="Como usar o programa">
-        <li>
+        <li role="presentation">
           <button class="aba" type="button" role="tab" id="aba-1" aria-controls="tela-1" aria-selected="true">
             <span class="aba-num">1</span>
             <span>
@@ -622,7 +652,7 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
             <span class="aba-barra" aria-hidden="true"><i></i></span>
           </button>
         </li>
-        <li>
+        <li role="presentation">
           <button class="aba" type="button" role="tab" id="aba-2" aria-controls="tela-2" aria-selected="false" tabindex="-1">
             <span class="aba-num">2</span>
             <span>
@@ -632,7 +662,7 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
             <span class="aba-barra" aria-hidden="true"><i></i></span>
           </button>
         </li>
-        <li>
+        <li role="presentation">
           <button class="aba" type="button" role="tab" id="aba-3" aria-controls="tela-3" aria-selected="false" tabindex="-1">
             <span class="aba-num">3</span>
             <span>
@@ -642,7 +672,7 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
             <span class="aba-barra" aria-hidden="true"><i></i></span>
           </button>
         </li>
-        <li>
+        <li role="presentation">
           <button class="aba" type="button" role="tab" id="aba-4" aria-controls="tela-4" aria-selected="false" tabindex="-1">
             <span class="aba-num">4</span>
             <span>
@@ -684,6 +714,7 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
         <p class="legenda" id="legenda" aria-live="polite">
           <b>Passo 1.</b> A pasta está definida e o índice, ainda vazio. A análise não começa sozinha.
         </p>
+        <button class="passos-pausa" type="button" id="passos-pausa" hidden>Pausar a demonstração</button>
       </div>
     </div>
   </div>
@@ -812,8 +843,11 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
   </div>
 </section>
 
+</main>
+
 <dialog class="lupa" id="lupa" aria-label="Captura de tela ampliada">
-  <div class="lupa-rolo"><img id="lupa-img" src="" alt="" width="1042" height="572" /></div>
+  <!-- tabindex: a area rola para o lado, e pelo teclado so rola se puder receber foco -->
+  <div class="lupa-rolo" tabindex="0" role="group" aria-label="Captura ampliada, role com as setas"><img id="lupa-img" src="" alt="" width="1042" height="572" /></div>
   <div class="lupa-barra">
     <p class="lupa-dica">Arraste para o lado para ver a janela inteira.</p>
     <button class="lupa-fechar" type="button" id="lupa-fechar">Fechar</button>
@@ -887,31 +921,65 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
     }, DWELL);
   }
 
+  var pausa = document.getElementById("passos-pausa");
+  var mexeu = false;
+
+  /* a legenda so e anunciada quando a troca vem do visitante; durante o
+     avanco automatico ela fica calada, senao o leitor de tela repetiria uma
+     frase nova a cada 7 s (padrao de carrossel da APG) */
+  function ligar() {
+    automatico = true;
+    bloco.setAttribute("data-auto", "on");
+    legenda.setAttribute("aria-live", "off");
+    pausa.textContent = "Pausar a demonstração";
+    pausa.hidden = false;
+  }
+
   function parar() {
     automatico = false;
     bloco.setAttribute("data-auto", "off");
+    legenda.setAttribute("aria-live", "polite");
+    pausa.textContent = "Retomar a demonstração";
     clearTimeout(relogio);
   }
 
+  pausa.addEventListener("click", function () {
+    if (automatico) { parar(); return; }
+    ligar();
+    mostrar(atual);
+    agendar();
+  });
+
   abas.forEach(function (aba, i) {
     aba.addEventListener("click", function () {
+      mexeu = true;
       parar();               /* escolha manual desliga o avanco automatico */
       mostrar(i);
     });
     aba.addEventListener("keydown", function (e) {
-      var d = e.key === "ArrowDown" || e.key === "ArrowRight" ? 1
-            : e.key === "ArrowUp" || e.key === "ArrowLeft" ? -1 : 0;
-      if (!d) return;
+      var n = abas.length;
+      var alvo = e.key === "ArrowDown" || e.key === "ArrowRight" ? (i + 1) % n
+               : e.key === "ArrowUp" || e.key === "ArrowLeft" ? (i - 1 + n) % n
+               : e.key === "Home" ? 0
+               : e.key === "End" ? n - 1 : -1;
+      if (alvo < 0) return;
       e.preventDefault();
+      mexeu = true;
       parar();
-      var alvo = (i + d + abas.length) % abas.length;
       mostrar(alvo);
       abas[alvo].focus();
     });
   });
 
+  /* mouse em cima ou foco de teclado dentro: segura o avanco (sem desligar) */
   bloco.addEventListener("pointerenter", function () { clearTimeout(relogio); });
-  bloco.addEventListener("pointerleave", function () { agendar(); });
+  bloco.addEventListener("pointerleave", function () {
+    if (!bloco.contains(document.activeElement)) agendar();
+  });
+  bloco.addEventListener("focusin", function () { clearTimeout(relogio); });
+  bloco.addEventListener("focusout", function (e) {
+    if (!bloco.contains(e.relatedTarget)) agendar();
+  });
   document.addEventListener("visibilitychange", function () {
     if (document.hidden) clearTimeout(relogio); else agendar();
   });
@@ -923,8 +991,8 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
       entradas.forEach(function (e) {
         if (!e.isIntersecting) return;
         olho.disconnect();
-        automatico = true;
-        bloco.setAttribute("data-auto", "on");
+        if (mexeu) return;   /* o visitante ja escolheu um passo antes */
+        ligar();
         mostrar(atual);
         agendar();
       });
@@ -939,18 +1007,40 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
     var lupaImg = document.getElementById("lupa-img");
     var rolo = lupa.querySelector(".lupa-rolo");
 
+    var origem = null;
+
+    function ampliar(img) {
+      origem = img;
+      lupaImg.src = img.currentSrc || img.src;
+      lupaImg.alt = img.alt;
+      lupa.showModal();
+      /* comeca mostrando a esquerda da janela, onde estao os nomes */
+      rolo.scrollLeft = 0;
+    }
+
+    /* a ampliacao tambem precisa funcionar pelo teclado (WCAG 2.1.1): cada
+       captura vira um botao focavel; o nome diz a acao e o que a imagem mostra */
+    [].slice.call(document.querySelectorAll(".quadro img")).forEach(function (img) {
+      img.tabIndex = 0;
+      img.setAttribute("role", "button");
+      img.setAttribute("aria-label", "Ampliar captura: " + img.alt);
+      img.addEventListener("keydown", function (e) {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        ampliar(img);
+      });
+    });
+
     document.addEventListener("click", function (e) {
       var img = e.target.closest(".quadro img");
-      if (img) {
-        lupaImg.src = img.currentSrc || img.src;
-        lupaImg.alt = img.alt;
-        lupa.showModal();
-        /* comeca mostrando a esquerda da janela, onde estao os nomes */
-        rolo.scrollLeft = 0;
-        return;
-      }
+      if (img) { ampliar(img); return; }
       /* clique fora do conteudo (no backdrop) fecha */
       if (e.target === lupa) lupa.close();
+    });
+
+    /* ao fechar, o foco volta para a captura que abriu a lupa (WCAG 2.4.3) */
+    lupa.addEventListener("close", function () {
+      if (origem) origem.focus();
     });
 
     document.getElementById("lupa-fechar").addEventListener("click", function () {
@@ -981,14 +1071,16 @@ footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
 </script>
 
 <!-- === Botao de volta ao portfolio - cole antes de </body> === -->
+<nav aria-label="Portf&oacute;lio">
 <a id="mr-portfolio-btn" href="https://matheusmerlim1.github.io/" target="_blank" rel="noopener"
-   aria-label="Abrir o portf&oacute;lio de Matheus Raposo" title="Ver todos os meus projetos">
+   aria-label="Portf&oacute;lio de Matheus Raposo (abre em nova aba)" title="Ver todos os meus projetos">
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>
   </svg>
   <span>Portf&oacute;lio</span>
 </a>
+</nav>
 <style>
 #mr-portfolio-btn {
   position: fixed; top: 12px; right: 12px; z-index: 2147483000;
